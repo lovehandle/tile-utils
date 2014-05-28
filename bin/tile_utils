@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+
+require 'trollop'
+require 'open-uri'
+require 'fileutils'
+
+require File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib', 'tile_utils'))
+
+opts = Trollop.options do
+  opt :lat_min, "Minimum latitude",    type: :float, required: true
+  opt :lat_max, "Maximum latitude",    type: :float, required: true
+  opt :lng_min, "Minimum longitude",   type: :float, required: true
+  opt :lng_max, "Maximum longitude",   type: :float, required: true
+  opt :zoom_min, "Minimum zoom level", type: :integer
+  opt :zoom_max, "Maximum zoom level", type: :integer
+  opt :path_template, "Path to store map tiles", type: :string, required: true
+  opt :url_template, "URL template for downloading", type: :string, required: true
+end
+
+DEFAULT_ZOOM_MIN = 0.freeze
+DEFAULT_ZOOM_MAX = 20.freeze
+
+zoom_min = opts[:zoom_min] || DEFAULT_ZOOM_MIN
+zoom_max = opts[:zoom_max] || DEFAULT_ZOOM_MAX
+
+def path_for(template: nil, x: nil, y: nil, z: nil)
+  str = template.dup
+
+  { x: x, y: y, z: z }.each do |k,v|
+    str.gsub!("{#{k}}", v.to_s)
+  end
+
+  str
+end
+
+(zoom_min..zoom_max).each do |z|
+
+  min = TileUtils::Position::Geographic.new(lat: opts[:lat_min], lng: opts[:lng_min], zoom: z)
+  max = TileUtils::Position::Geographic.new(lat: opts[:lat_max], lng: opts[:lng_max], zoom: z)
+  box = TileUtils::BoundingBox::Geographic.new(min: min, max: max)
+
+  box = box.to_geom
+
+  box.x_range.each do |x|
+    box.y_range.each do |y|
+      url  = path_for(template: opts[:url_template], x: x, y: y, z: z)
+      path = path_for(template: opts[:path_template], x: x, y: y, z: z)
+      dir  = File.split(path).first
+
+      open(url) do |img|
+        if !Dir.exists?(dir)
+          FileUtils.mkdir_p(dir)
+        end
+
+        File.open(path, 'wb') {|f| f.puts img.read }
+      end
+
+      puts "File downloaded: X: #{x} Y: #{y} Z: #{z}"
+
+    end
+  end
+
+end

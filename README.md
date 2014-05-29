@@ -8,7 +8,7 @@ Tile Utils is a library for downloading map tiles from a specified endpoint
 ## Installation
 
 ```
-git clone https://github.com/rclosner/tile_utils.git
+git clone https://github.com/rclosner/tile-utils.git
 cd tile_utils
 bundle install
 ```
